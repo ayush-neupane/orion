@@ -1,0 +1,103 @@
+name: orion
+
+x-backend-env: &backend-env
+  ENVIRONMENT: ${ENVIRONMENT:-development}
+  SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set in .env - copy .env.example}
+  DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-orion}:${POSTGRES_PASSWORD:-orion_local_dev_pw}@postgres:5432/${POSTGRES_DB:-orion}
+  REDIS_URL: redis://redis:6379/0
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://localhost:5173}
+  ALPHA_VANTAGE_KEY: ${ALPHA_VANTAGE_KEY:-}
+  NEWS_API_KEY: ${NEWS_API_KEY:-}
+  PROXY_URL: ${PROXY_URL:-}
+  INGEST_INTERVAL_SECONDS: ${INGEST_INTERVAL_SECONDS:-60}
+  NEWS_REFRESH_MINUTES: ${NEWS_REFRESH_MINUTES:-30}
+  PREDICTION_REFRESH_MINUTES: ${PREDICTION_REFRESH_MINUTES:-10}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  LOG_FILE: /app/logs/orion.log
+  COOKIE_SECURE: ${COOKIE_SECURE:-true}
+
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-orion}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-orion_local_dev_pw}
+      POSTGRES_DB: ${POSTGRES_DB:-orion}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-orion} -d ${POSTGRES_DB:-orion}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    environment: *backend-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  celery_worker:
+    build: ./backend
+    command: ["celery", "-A", "app.celery_app.celery", "worker", "--loglevel=info", "--concurrency=2"]
+    environment: *backend-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    volumes:
+      - backend_logs:/app/logs
+    restart: unless-stopped
+
+  celery_beat:
+    build: ./backend
+    command: ["celery", "-A", "app.celery_app.celery", "beat", "--loglevel=info"]
+    environment: *backend-env
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  backend_logs:

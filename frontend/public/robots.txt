@@ -1,0 +1,5 @@
+# ORION — open-source market intelligence
+User-agent: *
+Allow: /
+
+# No private or authenticated areas exist; the SPA is fully public.

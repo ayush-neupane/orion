@@ -1,0 +1,41 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+pydantic==2.10.4
+pydantic-settings==2.7.1
+email-validator==2.2.0
+python-dotenv==1.0.1
+PyJWT==2.10.1
+bcrypt==4.2.1
+slowapi==0.1.9
+structlog==24.4.0
+celery[redis]==5.4.0
+redis==5.2.1
+httpx==0.28.1
+yfinance==0.2.51
+tzdata==2025.2
+feedparser==6.0.11
+beautifulsoup4==4.12.3
+lxml==5.3.0
+pandas==2.2.3
+numpy==2.2.1
+scikit-learn==1.6.0
+xgboost==2.1.4
+
+# --- test / lint toolchain ---
+pytest==8.3.4
+pytest-cov==6.0.0
+respx==0.22.0
+flake8==7.1.1
+pip-audit==2.7.3
+
+# NOTE (security review decision):
+# `requests-html` was requested by the original spec but is unmaintained,
+# pins a vulnerable pyppeteer chain and executes remote JS. We use
+# httpx + BeautifulSoup4 (actively maintained, smaller attack surface).
+#
+# OPTIONAL heavy ML extras (FinBERT). Install manually with:
+#   pip install transformers==4.47.1 torch --index-url https://download.pytorch.org/whl/cpu
+# The app auto-detects them; without them a deterministic finance lexicon
+# sentiment engine is used (zero-cost, no model download).
