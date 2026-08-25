@@ -97,7 +97,12 @@ async def lifespan(app: FastAPI):
                     sig, lambda s=sig_name: (
                         log.info("shutdown_signal_received", signal=s),
                         asyncio.create_task(_shutdown())))
-            except NotImplementedError:  # pragma: no cover - Windows dev
+            except (NotImplementedError, RuntimeError, ValueError):
+                # pragma: no cover - platform/thread dependent best effort
+                # NotImplementedError: Windows event loops have no signal
+                # watchers. ValueError/RuntimeError: raised on Unix when the
+                # loop runs outside the main thread/interpreter (e.g. the
+                # TestClient portal) - signal watching is best-effort only.
                 pass
     _broadcaster_task = asyncio.create_task(_tick_broadcaster())
     yield

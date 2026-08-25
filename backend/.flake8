@@ -1,0 +1,10 @@
+[flake8]
+# flake8 does NOT read pytest.ini; this file mirrors the [flake8] section.
+max-line-length = 92
+extend-ignore = E203, W503
+exclude =
+    .venv,
+    __pycache__,
+    .pytest_cache,
+    build,
+    dist

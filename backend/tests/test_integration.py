@@ -177,6 +177,12 @@ class TestScraperFallbacks:
         assert scraper._top_up_forming_bar("X", synthetic, now) == synthetic
 
     def test_fetch_history_tops_up_real_rows(self, monkeypatch):
+        from zoneinfo import ZoneInfo
+        # Freeze the clock mid-session so the top-up gate is deterministic.
+        monkeypatch.setattr(
+            scraper, "_ny_now",
+            lambda: datetime(2026, 8, 24, 10, 0,
+                             tzinfo=ZoneInfo("America/New_York")))
         monkeypatch.setattr(scraper, "fetch_yahoo_history",
                             lambda *a, **kw: self._stale_bars())
         monkeypatch.setattr(scraper, "fetch_alpha_vantage_history",
@@ -184,8 +190,26 @@ class TestScraperFallbacks:
         monkeypatch.setattr(scraper, "fetch_live_price", lambda sym: 105.5)
         bars, simulated = scraper.fetch_history("META", "US")
         assert simulated is False
-        assert bars[-1]["time"] == scraper._session_date() or \
-            len(bars) == 2  # appended when a session is in progress
+        assert len(bars) == 2
+        assert bars[-1]["time"] == "2026-08-24"
+        assert bars[-1]["close"] == 105.5
+
+    def test_fetch_live_price_success_and_failure(self, monkeypatch):
+        class FakeInfo(dict):
+            def __getattr__(self, name):
+                return self[name]
+
+        monkeypatch.setattr(
+            scraper.yf, "Ticker",
+            lambda sym: type("T", (), {"fast_info": FakeInfo(
+                last_price=123.45)})())
+        assert scraper.fetch_live_price("META") == 123.45
+
+        def boom(sym):
+            raise RuntimeError("network down")
+
+        monkeypatch.setattr(scraper.yf, "Ticker", boom)
+        assert scraper.fetch_live_price("META") is None
 
 
 class TestCeleryPipelineE2E:

@@ -20,11 +20,13 @@ from starlette.concurrency import run_in_threadpool
 log = get_logger(__name__)
 router = APIRouter(prefix="/market", tags=["market"])
 
+
 def _status_422() -> int:
     """Starlette renamed HTTP_422_UNPROCESSABLE_ENTITY to
     HTTP_422_UNPROCESSABLE_CONTENT; support both versions without
     touching the deprecated attribute (which warns on access)."""
     return getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422)
+
 
 # Tiny TTL cache so bursts don't hammer upstream free APIs.
 _cache: dict[str, tuple[float, object]] = {}

@@ -153,7 +153,7 @@ def _ny_now() -> datetime:
     try:
         from zoneinfo import ZoneInfo
         return datetime.now(ZoneInfo(MARKET_TZ))
-    except Exception:  # noqa: BLE001 - Windows hosts may lack tzdata
+    except Exception:  # pragma: no cover - Windows hosts may lack tzdata
         return datetime.now(timezone.utc).astimezone(
             timezone(timedelta(hours=-4)))
 
