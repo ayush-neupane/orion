@@ -80,7 +80,7 @@ Prerequisites: [Docker](https://docs.docker.com/get-docker/) + Docker Compose.
 That's it.
 
 ```bash
-git clone https://github.com/<you>/orion.git
+git clone https://github.com/ayush-neupane/orion.git
 cd orion
 cp .env.example .env
 # IMPORTANT: generate a real secret key and paste it into .env:
